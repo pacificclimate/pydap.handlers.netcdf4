@@ -5,7 +5,6 @@ from stat import ST_MTIME
 from email.utils import formatdate
 import logging
 
-import h5py
 from pupynere import REVERSE
 
 from pydap.model import DatasetType, StructureType, GridType, BaseType
@@ -16,7 +15,7 @@ from .stack_slice import StackableSlice
 logger = logging.getLogger(__name__)
 
 
-class HDF5Handler(BaseHandler):
+class NetCDF4Handler(BaseHandler):
 
     extensions = re.compile(r"^.*(\.nc4?|\.h(df)?[45]?)$", re.IGNORECASE)
 
@@ -134,7 +133,7 @@ def process_attrs(attrs):
     return rv
 
 
-class Hdf5Data(object):
+class NetCDF4Data(object):
     """
     A wrapper for Hdf5 variables, ensuring support for iteration and the dtype
     property

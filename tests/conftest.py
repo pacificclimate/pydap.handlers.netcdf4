@@ -4,45 +4,46 @@ from pkg_resources import resource_filename
 
 import pytest
 import numpy.random
-import h5py
-from pydap.handlers.hdf5 import Hdf5Data
+import netCDF4
+from pydap.handlers.netcdf4 import NetCDF4Data
 
-test_h5 = resource_filename('pydap.handlers.hdf5', 'data/test.h5')
+test_nc = resource_filename('pydap.handlers.netcdf4', 'data/test.nc')
 
 
-@pytest.fixture(scope="function", params=['/tasmax', '/tasmin', '/pr'])
-def hdf5data_instance_3d(request):
-    f = h5py.File(test_h5, 'r')
+@pytest.fixture(scope="function", params=['tasmax', 'tasmin', 'pr'])
+def data_instance_3d(request):
+    f = netCDF4.Dataset(test_nc, 'r')
     dst = f[request.param]
-    return Hdf5Data(dst)
+    return NetCDF4Data(dst)
 
 
-@pytest.fixture(scope="module", params=['/lat', '/lon', '/time'])
-def hdf5data_instance_1d(request):
-    f = h5py.File(test_h5, 'r')
+@pytest.fixture(scope="module", params=['lat', 'lon', 'time'])
+def data_instance_1d(request):
+    f = netCDF4.Dataset(test_nc, 'r')
     dst = f[request.param]
-    return Hdf5Data(dst)
+    return NetCDF4Data(dst)
+
 
 # _All_ the variables should be iterable
 @pytest.fixture(scope="module",
-                params=['/tasmax', '/tasmin', '/pr', '/lat', '/lon', '/time'])
-def hdf5data_iterable(request):
-    f = h5py.File(test_h5, 'r')
+                params=['tasmax', 'tasmin', 'pr', 'lat', 'lon', 'time'])
+def data_iterable(request):
+    f = netCDF4.Dataset(test_nc, 'r')
     dst = f[request.param]
-    return Hdf5Data(dst)
+    return NetCDF4Data(dst)
 
 
 @pytest.fixture(scope="function")
-def hdf5_dst(request):
+def nc4_dst(request):
     f = NamedTemporaryFile()
-    hf = h5py.File(f.name, driver='core', backing_store=False)
+    nc = netCDF4.Dataset(f.name, mode='w')
     group = hf.create_group('foo')
     dst = group.create_dataset(
         'bar', (10, 10, 10), '=f8', maxshape=(None, 10, 10))
     dst[:, :, :] = numpy.random.rand(10, 10, 10)
 
     def fin():
-        hf.close()
+        nc.close()
         os.remove(f.name)
     request.addfinalizer(fin)
 

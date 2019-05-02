@@ -1,6 +1,6 @@
 import pytest
 
-from pydap.handlers.hdf5.stack_slice import StackableSlice
+from pydap.handlers.netcdf4.stack_slice import StackableSlice
 
 ss = StackableSlice
 
