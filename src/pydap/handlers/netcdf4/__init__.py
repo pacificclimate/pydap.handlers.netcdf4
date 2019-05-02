@@ -39,11 +39,8 @@ class NetCDF4Handler(BaseHandler):
         attrs = {'NC_GLOBAL': process_attrs(self.fp.attrs)}
 
         unlim = find_unlimited(self.fp)
-        if len(unlim) > 1:
-            raise Exception("Found %d unlimited dimensions %s, "
-                            "but DAP supports no more than one.")
-        elif len(unlim) == 1:
-            attrs.update({'DODS_EXTRA': {'Unlimited_Dimension': unlim.pop()}})
+        if unlim:
+            attrs.update({'DODS_EXTRA': {'Unlimited_Dimension': unlim}})
 
         # build dataset
         name = os.path.split(filepath)[1]
@@ -101,25 +98,13 @@ class NetCDF4Handler(BaseHandler):
         self.fp.close()
 
 
-# FIXME: I *think* this can go away (or be substantially simplified.
-# NetCDF4 can't have more than one unlimited dimension so we don't
-# have to do this recursively.
-def find_unlimited(h5):
-    '''Recursively construct a set of names for unlimited dimensions in an
-    HDF dataset'''
-    rv = set()
-    if isinstance(h5, h5py.Dataset):
-        try:
-            dims = tuple([d.keys()[0] for d in h5.dims])
-        except BaseException:
-            return set()
-        maxshape = h5.maxshape
-        # length is None for unlimited dimensions
-        rv = [dimname for dimname, length in zip(dims, maxshape) if not length]
-        return set(rv)
-    for child in h5.values():
-        rv.update(find_unlimited(child))
-    return rv
+def find_unlimited(nc):
+    '''Find and return the name of the unlimited dimension of the NetCDF Dataset
+       Return None if one does not exist.
+    '''
+    for dim_name, dim in nc.dimensions.items():
+        if dim.isunlimited():
+            return dim_name
 
 
 def process_attrs(attrs):
