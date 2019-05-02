@@ -5,6 +5,7 @@ from pkg_resources import resource_filename
 import pytest
 import numpy.random
 import netCDF4
+
 from pydap.handlers.netcdf4 import NetCDF4Data
 
 test_nc = resource_filename('pydap.handlers.netcdf4', 'data/test.nc')
@@ -37,9 +38,13 @@ def data_iterable(request):
 def nc4_dst(request):
     f = NamedTemporaryFile()
     nc = netCDF4.Dataset(f.name, mode='w')
-    group = hf.create_group('foo')
-    dst = group.create_dataset(
-        'bar', (10, 10, 10), '=f8', maxshape=(None, 10, 10))
+    nc.createDimension('lat', 10)
+    nc.createDimension('lon', 10)
+    nc.createDimension('time', None)
+    #group = nc.createGroup('foo')
+    #dst = group.createDataset(
+    #    'bar', (10, 10, 10), '=f8', maxshape=(None, 10, 10))
+    dst = nc.createVariable('foo', 'f', ('time', 'lat', 'lon'))
     dst[:, :, :] = numpy.random.rand(10, 10, 10)
 
     def fin():

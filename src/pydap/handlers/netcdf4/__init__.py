@@ -5,6 +5,7 @@ from stat import ST_MTIME
 from email.utils import formatdate
 import logging
 
+import netCDF4
 from pupynere import REVERSE
 
 from pydap.model import DatasetType, StructureType, GridType, BaseType
@@ -23,7 +24,7 @@ class NetCDF4Handler(BaseHandler):
         BaseHandler.__init__(self)
 
         try:
-            self.fp = h5py.File(filepath, 'r')
+            self.fp = netCDF4.Dataset(filepath, 'r')
         except Exception as exc:
             message = 'Unable to open file %s: %s' % (filepath, exc)
             raise OpenFileError(message)
@@ -69,7 +70,7 @@ class NetCDF4Handler(BaseHandler):
             rank = len(h5.shape)
             # basetype
             if rank == 0:
-                dataset[name] = BaseType(name, data=Hdf5Data(
+                dataset[name] = BaseType(name, data=NetCDF4Data(
                     h5), dimensions=(), attributes=attrs)
             # sequence?
             # elif rank == 1:
@@ -82,7 +83,7 @@ class NetCDF4Handler(BaseHandler):
                 logger.debug("DIMENSIONS: {}".format(dims))
                 parent[name] = BaseType(
                     name,
-                    data=Hdf5Data(h5),
+                    data=NetCDF4Data(h5),
                     dimensions=dims,
                     attributes=attrs)  # Add the main variable
                 for dim in h5.dims:  # and all of the dimensions
@@ -91,7 +92,7 @@ class NetCDF4Handler(BaseHandler):
             # BaseType
             else:
                 dataset[name] = BaseType(
-                    name, data=Hdf5Data(h5), attributes=attrs)
+                    name, data=NetCDF4Data(h5), attributes=attrs)
 
         for varname in self.fp:
             add_variables(self.dataset, self.fp[varname])
@@ -100,6 +101,9 @@ class NetCDF4Handler(BaseHandler):
         self.fp.close()
 
 
+# FIXME: I *think* this can go away (or be substantially simplified.
+# NetCDF4 can't have more than one unlimited dimension so we don't
+# have to do this recursively.
 def find_unlimited(h5):
     '''Recursively construct a set of names for unlimited dimensions in an
     HDF dataset'''
@@ -135,13 +139,13 @@ def process_attrs(attrs):
 
 class NetCDF4Data(object):
     """
-    A wrapper for Hdf5 variables, ensuring support for iteration and the dtype
+    A wrapper for NetCDF4 variables, ensuring support for iteration and the dtype
     property
     """
 
     def __init__(self, var, slices=None):
         self.var = var
-        logger.debug('Hdf5Data.__init__({}, {})'.format(var, slices))
+        logger.debug('NetCDf4Data.__init__({}, {})'.format(var, slices))
 
         rank = len(var.shape)
         assert rank > 0
@@ -162,7 +166,7 @@ class NetCDF4Data(object):
 
         self._init_iter()
 
-        logger.debug('end Hdf5Data.__init__()')
+        logger.debug('end NetCDF4Data.__init__()')
 
     def _init_iter(self):
         '''Initialize the iterator'''
@@ -210,11 +214,11 @@ class NetCDF4Data(object):
         subset_slices = [orig_slice + subset_slice for orig_slice,
                          subset_slice in zip(self._slices, slices)]
 
-        return Hdf5Data(self.var, subset_slices)
+        return NetCDF4Data(self.var, subset_slices)
 
     def __iter__(self):
         logger.debug('returning from __iter__')
-        return Hdf5Data(self.var, self._slices)
+        return NetCDF4Data(self.var, self._slices)
 
     def next(self):
         stop = self._major_slice.stop if self._major_slice.stop \
