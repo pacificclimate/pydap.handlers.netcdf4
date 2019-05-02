@@ -1,6 +1,7 @@
 from pkg_resources import resource_filename
 
 import numpy
+import numpy.ma.core
 from webob.request import Request
 
 from pydap.handlers.netcdf4 import NetCDF4Data
@@ -64,10 +65,10 @@ def test_shape_of_sliced_1d(data_instance_1d):
 def test_1d_iteration(data_instance_1d):
     x = data_instance_1d
     for i in iter(x):
-        if data_instance_1d.var.maxshape == (None,):
-            assert type(i) == numpy.float64
+        if data_instance_1d.var._nunlimdim > 0:
+            assert type(i) in (numpy.float64, numpy.ma.core.MaskedArray)
         else:
-            assert type(i) == numpy.ndarray
+            assert type(i) in (numpy.ndarray, numpy.ma.core.MaskedArray)
             assert len(i) == len(data_instance_1d.var)
 
 

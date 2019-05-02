@@ -36,7 +36,8 @@ class NetCDF4Handler(BaseHandler):
                      time.localtime(
                          os.stat(filepath)[ST_MTIME]))))))
 
-        attrs = {'NC_GLOBAL': process_attrs(self.fp.attrs)}
+        ncattrs = {attr: self.fp.__dict__[attr] for attr in self.fp.ncattrs()}
+        attrs = {'NC_GLOBAL': ncattrs}
 
         unlim = find_unlimited(self.fp)
         if unlim:
@@ -52,7 +53,9 @@ class NetCDF4Handler(BaseHandler):
         def add_variables(dataset, h5, level=0):
             assert type(h5) in (h5py.File, h5py.Group, h5py.Dataset)
             name = h5.name.lstrip('/')
-            attrs = process_attrs(h5.attrs)
+            varattrs = {attr: h5.__dict__[attr] for attr in h5.ncattrs()}
+
+            attrs = process_attrs(varattrs)
 
             # struct
             if type(h5) in (h5py.File, h5py.Group):
@@ -91,8 +94,8 @@ class NetCDF4Handler(BaseHandler):
                 dataset[name] = BaseType(
                     name, data=NetCDF4Data(h5), attributes=attrs)
 
-        for varname in self.fp:
-            add_variables(self.dataset, self.fp[varname])
+        for variable in self.fp.variables.values():
+            add_variables(self.dataset, variable)
 
     def close(self):
         self.fp.close()
@@ -105,21 +108,6 @@ def find_unlimited(nc):
     for dim_name, dim in nc.dimensions.items():
         if dim.isunlimited():
             return dim_name
-
-
-def process_attrs(attrs):
-    rv = {}
-    for key in attrs.keys():
-        try:
-            # Potentially raises TypeError: No NumPy equivalent for TypeVlenID
-            # exists
-            val = attrs.get(key)
-            # This will raise Exception of the type is not convertable
-            REVERSE(val.dtype)
-            rv[key] = val
-        except BaseException:
-            logger.warning("Failed to convert attribute " + key)
-    return rv
 
 
 class NetCDF4Data(object):
@@ -213,7 +201,7 @@ class NetCDF4Data(object):
 
             # Special case: for 1d variables, non-record variables return
             # output on the first iteration in a single numpy array
-            if self.rank == 1 and self.var.maxshape != (None,):
+            if self.rank == 1 and self.var._nunlimdim == 0:
                 self.pos = float('inf')
                 return self.var[self._major_slice.slice]
 
