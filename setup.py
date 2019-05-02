@@ -16,10 +16,10 @@ class PyTest(TestCommand):
         errno = pytest.main(self.test_args)
         sys.exit(errno)
 
-version = '0.5.2'
+version = '0.0.1'
 
 install_requires = [
-    'h5py',
+    'netCDF4',
     'pupynere_pdp >=1.1.4',
     'pydap_pdp >=3.2.6'
 ]
@@ -39,14 +39,13 @@ setup(name='pydap.handlers.hdf5',
     packages=find_packages('src'),
     package_dir = {'': 'src'},
     namespace_packages = ['pydap', 'pydap.handlers'],
-    package_data={'': ['pydap/handlers/hdf5/data/*.h5']},
+#    package_data={'': ['pydap/handlers/hdf5/data/*.h5']},
     include_package_data=True,
     zip_safe=False,
     install_requires=install_requires,
     entry_points="""
         [pydap.handler]
-        hdf5 = pydap.handlers.hdf5:HDF5Handler
-        nc = pydap.handlers.hdf5:HDF5Handler
+        nc = pydap.handlers.netcdf4:NetCDF4Handler
     """,
     tests_require=['pytest', 'numpy'],
     cmdclass = {'test': PyTest},
