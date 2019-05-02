@@ -6,8 +6,8 @@ from email.utils import formatdate
 import logging
 
 import netCDF4
-from pupynere import REVERSE
 
+from pydap.lib import quote
 from pydap.model import DatasetType, StructureType, GridType, BaseType
 from pydap.handlers.lib import BaseHandler
 from pydap.exceptions import OpenFileError
@@ -44,55 +44,49 @@ class NetCDF4Handler(BaseHandler):
             attrs.update({'DODS_EXTRA': {'Unlimited_Dimension': unlim}})
 
         # build dataset
-        name = os.path.split(filepath)[1]
+        name = quote(os.path.split(filepath)[1])
         self.dataset = DatasetType(name, attributes=attrs)
 
         def is_gridded(dst):
             return sum([len(dim) for dim in dst.dims]) > 0
 
-        def add_variables(dataset, h5, level=0):
-            assert type(h5) in (h5py.File, h5py.Group, h5py.Dataset)
-            name = h5.name.lstrip('/')
-            varattrs = {attr: h5.__dict__[attr] for attr in h5.ncattrs()}
+        def add_variables(dataset, var_):
+            varattrs = {}
+            if hasattr(var_, 'ncattrs'):
+                varattrs = {attr: var_.__dict__[attr] for attr in var_.ncattrs()}
 
-            attrs = process_attrs(varattrs)
+            #attrs = process_attrs(varattrs)
 
-            # struct
-            if type(h5) in (h5py.File, h5py.Group):
-                foo = StructureType(name, attributes=attrs)
-                name = foo.name
-                dataset[name] = foo
-                for bar in h5.values():
-                    add_variables(dataset[name], bar, level + 1)
-                return
+            if hasattr(var_, 'shape'):
+                rank = len(var_.shape)
+            else:
+                rank = 1
 
-            # Recursion base cases
-            rank = len(h5.shape)
-            # basetype
             if rank == 0:
                 dataset[name] = BaseType(name, data=NetCDF4Data(
-                    h5), dimensions=(), attributes=attrs)
+                    var_), dimensions=(), attributes=varattrs)
             # sequence?
             # elif rank == 1:
             #    dataset[name] = SequenceType(name, data=h5,
             #                                 attributes=h5.attrs)
             # grid
-            elif is_gridded(h5):
-                parent = dataset[name] = GridType(name, attributes=attrs)
-                dims = tuple([d.values()[0].name.lstrip('/') for d in h5.dims])
+            elif rank > 1:
+                parent = dataset[name] = GridType(name, attributes=varattrs)
+                dims = var_.dimensions
                 logger.debug("DIMENSIONS: {}".format(dims))
                 parent[name] = BaseType(
                     name,
-                    data=NetCDF4Data(h5),
+                    data=NetCDF4Data(var_),
                     dimensions=dims,
-                    attributes=attrs)  # Add the main variable
-                for dim in h5.dims:  # and all of the dimensions
+                    attributes=varattrs)  # Add the main variable
+                for dimname in dims:  # and all of the dimensions
                     # Why would dims have more than one h5py.Dataset?
-                    add_variables(parent, dim[0], level + 1)
+                    dim = self.fp.dimensions[dimname]
+                    add_variables(parent, dim)
             # BaseType
             else:
                 dataset[name] = BaseType(
-                    name, data=NetCDF4Data(h5), attributes=attrs)
+                    name, data=NetCDF4Data(var_), attributes=varattrs)
 
         for variable in self.fp.variables.values():
             add_variables(self.dataset, variable)
@@ -120,7 +114,11 @@ class NetCDF4Data(object):
         self.var = var
         logger.debug('NetCDf4Data.__init__({}, {})'.format(var, slices))
 
-        rank = len(var.shape)
+        if hasattr(var, 'shape'):
+            rank = len(var.shape)
+        else:
+            rank = 1
+
         assert rank > 0
 
         if not slices:
