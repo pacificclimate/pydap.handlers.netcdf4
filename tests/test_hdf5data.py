@@ -65,7 +65,7 @@ def test_shape_of_sliced_1d(data_instance_1d):
 def test_1d_iteration(data_instance_1d):
     x = data_instance_1d
     for i in iter(x):
-        if data_instance_1d.var._nunlimdim > 0:
+        if data_instance_1d.var.ndim > 0:
             assert type(i) in (numpy.float64, numpy.ma.core.MaskedArray)
         else:
             assert type(i) in (numpy.ndarray, numpy.ma.core.MaskedArray)
@@ -99,7 +99,4 @@ def test_the_bounds():
 [304.0, 11292.0]
 [334.0, 11323.0]
 [0.0, 11323.0]
-climatology_bounds.time
-climatology_bounds.bnds
-[0.0, 0.0]
 '''

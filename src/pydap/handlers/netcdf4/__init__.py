@@ -51,6 +51,8 @@ class NetCDF4Handler(BaseHandler):
             return sum([len(dim) for dim in dst.dims]) > 0
 
         def add_variables(dataset, var_):
+            name = var_.name
+            logger.debug("Adding variable %s", var_.name)
             varattrs = {}
             if hasattr(var_, 'ncattrs'):
                 varattrs = {attr: var_.__dict__[attr] for attr in var_.ncattrs()}
@@ -63,6 +65,7 @@ class NetCDF4Handler(BaseHandler):
                 rank = 1
 
             if rank == 0:
+                logger.debug("rank 0 variable: %s", name)
                 dataset[name] = BaseType(name, data=NetCDF4Data(
                     var_), dimensions=(), attributes=varattrs)
             # sequence?
@@ -71,6 +74,7 @@ class NetCDF4Handler(BaseHandler):
             #                                 attributes=h5.attrs)
             # grid
             elif rank > 1:
+                logger.debug("rank %d variable: %s", rank, name)
                 parent = dataset[name] = GridType(name, attributes=varattrs)
                 dims = var_.dimensions
                 logger.debug("DIMENSIONS: {}".format(dims))
@@ -79,12 +83,17 @@ class NetCDF4Handler(BaseHandler):
                     data=NetCDF4Data(var_),
                     dimensions=dims,
                     attributes=varattrs)  # Add the main variable
-                for dimname in dims:  # and all of the dimensions
-                    # Why would dims have more than one h5py.Dataset?
+                for dimname in dims:
+                    # Add all of the dimensions if they exist as a variable
                     dim = self.fp.dimensions[dimname]
-                    add_variables(parent, dim)
+                    if dim in self.fp.variables.keys():
+                        add_variables(parent, dim)
+                    # Otherwise add it as a variable with no data
+                    dataset[dimname] = BaseType(dimname)
+
             # BaseType
             else:
+                logger.debug("rank 1 variable: %s", name)
                 dataset[name] = BaseType(
                     name, data=NetCDF4Data(var_), attributes=varattrs)
 
@@ -104,6 +113,15 @@ def find_unlimited(nc):
             return dim_name
 
 
+def has_unlimited(var):
+    '''Returns True if a NetCDF variable has an unlimited dimension'''
+    if hasattr(var, '_nunlimdim') and var._nunlimdim > 0:
+        return True
+    if hasattr(var, 'isunlimited'):
+        return var.isunlimited()
+    return False
+
+
 class NetCDF4Data(object):
     """
     A wrapper for NetCDF4 variables, ensuring support for iteration and the dtype
@@ -111,6 +129,7 @@ class NetCDF4Data(object):
     """
 
     def __init__(self, var, slices=None):
+        assert type(var) == netCDF4.Variable
         self.var = var
         logger.debug('NetCDf4Data.__init__({}, {})'.format(var, slices))
 
@@ -192,14 +211,19 @@ class NetCDF4Data(object):
         return NetCDF4Data(self.var, self._slices)
 
     def next(self):
+        if hasattr(self.var, 'shape'):
+            end = self.var.shape[0]
+        else:
+            end = self.var.size
+
         stop = self._major_slice.stop if self._major_slice.stop \
-               else self.var.shape[0]
+               else end
         step = self._major_slice.step if self._major_slice.step else 1
         if self.pos < stop:
 
             # Special case: for 1d variables, non-record variables return
             # output on the first iteration in a single numpy array
-            if self.rank == 1 and self.var._nunlimdim == 0:
+            if self.rank == 1 and has_unlimited(self.var):
                 self.pos = float('inf')
                 return self.var[self._major_slice.slice]
 
@@ -229,7 +253,10 @@ class NetCDF4Data(object):
                 self.var,
                 self._major_slice,
                 self._slices))
-        myshape = self.var.shape
+        if hasattr(self.var, 'shape'):
+            myshape = self.var.shape
+        else:
+            myshape = (self.var.size,)
         true_slices = [s.slice for s in self._slices]
         myshape = sliced_shape(true_slices, myshape)
         logger.debug("leaving shape with result %s", myshape)
