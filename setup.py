@@ -20,7 +20,6 @@ version = '0.0.1'
 
 install_requires = [
     'netCDF4',
-    'pupynere_pdp >=1.1.4',
     'pydap_pdp >=3.2.6'
 ]
 
