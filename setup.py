@@ -16,7 +16,7 @@ class PyTest(TestCommand):
         errno = pytest.main(self.test_args)
         sys.exit(errno)
 
-version = '0.0.1'
+version = '0.0.0'
 
 install_requires = [
     'netCDF4',
@@ -32,7 +32,7 @@ setup(name='pydap.handlers.netcdf4',
     ],
     keywords='netcdf4 opendap dods dap science meteorology oceanography',
     author='James Hiebert',
-    author_email='james@hiebert.name',
+    author_email='hiebert@uvic.ca',
 #    url='http://pydap.org/handlers.html#hdf5',
     license='MIT',
     packages=find_packages('src'),

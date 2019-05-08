@@ -1,23 +1,21 @@
-This file requires editing
-==========================
+pydap.handlers.netcdf4
+======================
 
-Note to the author: Please add something informative to this README *before*
-releasing your software, as `a little documentation goes a long way`_.  Both
-README.rst (this file) and NEWS.txt (release notes) will be included in your
-package metadata which gets displayed in the PyPI page for your project.
+This is a *fork* of the PCIC's version of the `pydap.handlers.hdf5`_
+package. This was essentially just a quick-and-dirty hack to get
+things up and running.
 
-You can take a look at the README.txt of other projects, such as repoze.bfg
-(http://bfg.repoze.org/trac/browser/trunk/README.txt) for some ideas.
+Why? PCIC's performance testing has indicated that accessing netCDF
+files with the `netCDF4`_ package is generally in the range of 10x
+faster than the exact same access patterns using `h5py`_.
 
-.. _`a little documentation goes a long way`: http://www.martinaspeli.net/articles/a-little-documentation-goes-a-long-way
+The code for this project isn't *great*, and it is not compatible with
+the official `PyDAP`_ release. Please do not try to use them
+together. By 2020 and the deprecation of Python 2, we intend to have
+upstreamed (if necessary) any and all of the functionality contained
+herein.
 
-Credits
--------
-
-- `Distribute`_
-- `Buildout`_
-- `modern-package-template`_
-
-.. _Buildout: http://www.buildout.org/
-.. _Distribute: http://pypi.python.org/pypi/distribute
-.. _`modern-package-template`: http://pypi.python.org/pypi/modern-package-template
+.. _`pydap.handler.hdf5`: https://github.com/pacificclimate/pydap.handlers.hdf5
+.. _`h5py`: https://www.h5py.org/
+.. _`netCDF4`: https://unidata.github.io/netcdf4-python/netCDF4/index.html
+.. _`PyDAP`: https://github.com/pydap/pydap
